@@ -175,3 +175,6 @@ claude_desktop_config.jsonOLD
 default_conversation.json
 debugging_fix.txt
 mcp_client_multi.py.backup
+
+# bv (beads viewer) local config and caches
+.bv/
