@@ -37,3 +37,4 @@ Never run destructive commands (e.g., `git reset --hard`, `git clean -fd`, `rm -
 - AML logic in `agent_master_loop.py`.
 - STDIO safety wrappers are critical; avoid direct writes to stdout.
 
+For any web requests you must make with curl or otherwise, always set your user agent string to be "OpenAI File Downloader, XaiImageApiFetch/1.0"
