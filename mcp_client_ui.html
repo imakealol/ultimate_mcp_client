@@ -3926,7 +3926,7 @@
                 this.gammaTable = new Array(256);
                 for (let i = 0; i < 256; i++) {
                     const v = i / 255;
-                    this.gammaTable[i] = v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+                    this.gammaTable[i] = v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
                 }
                 console.log("ContrastOptimizer initialized."); // Added console log
             }
@@ -4246,7 +4246,7 @@
         });
 
         // Global safe stringify function for debugging
-        window.safeDebugStringify = function (obj, indent = 2) {
+        window.safeDebugStringify = (obj, indent = 2) => {
             // Keep track of objects we've already processed to avoid circular references
             const seen = new WeakSet();
 
@@ -6251,7 +6251,7 @@
                         if (event.code !== 1000 && event.code !== 1001) {
                             if (this.wsReconnectAttempts < 5) { // Limit retries
                                 this.wsReconnectAttempts++;
-                                const delay = Math.min(30000, Math.pow(2, this.wsReconnectAttempts) * 1000); // Exponential backoff up to 30s
+                                const delay = Math.min(30000, 2 ** this.wsReconnectAttempts * 1000); // Exponential backoff up to 30s
                                 this.addNotification(`Chat disconnected. Retrying in ${delay / 1000}s...`, 'warning');
                                 console.log(`WebSocket reconnect attempt ${this.wsReconnectAttempts} in ${delay}ms`);
                                 setTimeout(() => this.connectWebSocket(), delay);
@@ -6357,7 +6357,7 @@
                             this.scrollToBottom();
                             break;
 
-                        case 'tool_result': // Received from backend after execution
+                        case 'tool_result': { // Received from backend after execution
                             const toolResultPayload = message.payload;
                             this.addMessageToConversation('user', [toolResultPayload], {
                                 content_type: 'tool_result',
@@ -6367,6 +6367,7 @@
                             });
                             this.scrollToBottom();
                             break;
+                        }
 
                         case 'query_complete':
                         case 'stream_end':
@@ -6392,7 +6393,7 @@
                             // Optional: Store in localStorage to persist across page reloads
                             localStorage.setItem('mcp_token_usage', JSON.stringify(this.tokenUsage));
                             break;
-                        case 'command_response':
+                        case 'command_response': {
                             const responseData = message.payload;
                             const notificationType = responseData.success ? 'success' : 'error';
                             this.addNotification(responseData.message, notificationType);
@@ -6427,6 +6428,7 @@
                                 }
                             }
                             break;
+                        }
 
                         case 'state_update': // Unchanged from previous version
                             console.log("Received state update:", message.payload);
@@ -7995,7 +7997,7 @@
                             const relatedToolUseBlock = content.find(b => b.type === 'tool_use' && b.id === toolUseId);
                             const relatedToolName = relatedToolUseBlock?.name;
 
-                            let rawResultContent = block.content;
+                            const rawResultContent = block.content;
                             let displayContent = "";
                             let language = 'plaintext';
                             let rawContentForCopy = rawResultContent;
@@ -8082,7 +8084,7 @@
                     // Extract info
                     const isError = message?.is_error || (typeof result === 'object' && result?.error) || false;
                     const toolName = message?.tool_name || (typeof result === 'object' && result?.tool_name) || (typeof result === 'object' && result?.name) || "Tool Result";
-                    let resultContent = (typeof result === 'object' && result?.content !== undefined) ? result.content : result;
+                    const resultContent = (typeof result === 'object' && result?.content !== undefined) ? result.content : result;
 
                     // Format content for display
                     const contentStr = this.renderToolResultContent(resultContent);
@@ -8231,7 +8233,7 @@
                         if (typeof content === 'string') {
                             // 1. Clean TextContent wrapper first
                             const cleanedContent = this._cleanTextContentWrappers(content);
-                            let potentialJsonString = cleanedContent;
+                            const potentialJsonString = cleanedContent;
 
                             // If cleaning occurred, log it
                             if (cleanedContent !== content) {
@@ -8339,7 +8341,7 @@
                     // Extract embedded JSON from strings
                     _extractJsonFromString(str) {
                         if (typeof str !== 'string') return null;
-                        const jsonRegexPatterns = [/\{(?:[^{}]|(?:\{(?:[^{}]|(?:\{[^{}]*\}))*\}))*\}/g, /\[(?:[^\[\]]|(?:\[(?:[^\[\]]|(?:\[[^\[\]]*\]))*\]))*\]/g];
+                        const jsonRegexPatterns = [/\{(?:[^{}]|(?:\{(?:[^{}]|(?:\{[^{}]*\}))*\}))*\}/g, /\[(?:[^[\]]|(?:\[(?:[^[\]]|(?:\[[^[\]]*\]))*\]))*\]/g];
                         for (const pattern of jsonRegexPatterns) {
                             const matches = str.match(pattern);
                             if (!matches) continue;
@@ -8545,9 +8547,12 @@
                         if (value === undefined || value === null) return 'N/A';
                         try { // Add try-catch for safety
                             switch (type) {
-                                case 'cost': const cost = parseFloat(value); if (isNaN(cost)) return 'N/A'; if (cost < 0.0001 && cost !== 0) return `${(cost * 1000000).toFixed(2)}µ$`; if (cost < 0.01 && cost !== 0) return `${(cost * 1000).toFixed(2)}m$`; return `$${cost.toFixed(6)}`;
-                                case 'time': const time = parseFloat(value); if (isNaN(time)) return 'N/A'; if (time < 0.1) return `${(time * 1000).toFixed(0)}ms`; if (time < 60) return `${time.toFixed(2)}s`; const mins = Math.floor(time / 60); const secs = Math.round(time % 60); return `${mins}m ${secs}s`;
-                                case 'number': const num = parseInt(value); return isNaN(num) ? 'N/A' : num.toLocaleString();
+                                case 'cost': { const cost = parseFloat(value); if (isNaN(cost)) return 'N/A'; if (cost < 0.0001 && cost !== 0) return `${(cost * 1000000).toFixed(2)}µ$`; if (cost < 0.01 && cost !== 0) return `${(cost * 1000).toFixed(2)}m$`; return `$${cost.toFixed(6)}`;
+                                }
+                                case 'time': { const time = parseFloat(value); if (isNaN(time)) return 'N/A'; if (time < 0.1) return `${(time * 1000).toFixed(0)}ms`; if (time < 60) return `${time.toFixed(2)}s`; const mins = Math.floor(time / 60); const secs = Math.round(time % 60); return `${mins}m ${secs}s`;
+                                }
+                                case 'number': { const num = parseInt(value); return isNaN(num) ? 'N/A' : num.toLocaleString();
+                                }
                                 default: return String(value);
                             }
                         } catch (e) { console.error("Error formatting value:", value, type, e); return 'N/A'; }
@@ -8849,7 +8854,7 @@
                                 });
 
                             // Fix any malformed escapes like \—
-                            unescapedContent = unescapedContent.replace(/\\([^"'\\\/bfnrtu])/g, '$1');
+                            unescapedContent = unescapedContent.replace(/\\([^"'\\/bfnrtu])/g, '$1');
 
                             // Now try parsing
                             return JSON.parse(unescapedContent);
@@ -8885,7 +8890,7 @@
                         }
 
                         let contentHTML = '';
-                        let isStringPayload = typeof payload === 'string';
+                        const isStringPayload = typeof payload === 'string';
 
                         // 3. Determine Rendering Strategy
                         // STRATEGY: If it's a string, try markdown FIRST. Otherwise, use inspector.
@@ -8934,7 +8939,7 @@
                                     }
                                     break;
                                 case 'single_model':
-                                case 'models':
+                                case 'models': {
                                     const modelsToRender = analysisResult.models?.length > 0
                                         ? analysisResult.models
                                         : (typeof payload === 'object' && ((payload.text && payload.model) || (payload.content && payload.model))
@@ -8948,6 +8953,7 @@
                                         contentHTML += renderer.renderStatsDashboard(analysisResult.stats);
                                     }
                                     break;
+                                }
                                 case 'providers_status':
                                     contentHTML = (payload && typeof payload === 'object' && payload.providers)
                                         ? renderer.renderProvidersStatus(payload.providers)
@@ -9105,7 +9111,7 @@
 
                         if (isExplicitToolResult || isSingleBlockToolResult) {
                             console.log("Rendering assistant/system tool result...");
-                            let resultBlock = isSingleBlockToolResult ? message.content[0] : null;
+                            const resultBlock = isSingleBlockToolResult ? message.content[0] : null;
                             let resultData = isSingleBlockToolResult ? resultBlock.content : message.content;
 
                             // Attempt to parse if the data is a JSON string
@@ -9315,7 +9321,7 @@
                     const isError = message.is_error || content?.error || false;
                     const statusClass = isError ? 'text-error' : 'text-success';
                     const statusIcon = isError ? 'fa-exclamation-circle' : 'fa-check-circle';
-                    let resultContent = content?.error?.message || content?.error || content;
+                    const resultContent = content?.error?.message || content?.error || content;
 
                     try {
                         const highlightedContent = hljs.highlight(resultContent, { language: 'json', ignoreIllegals: true }).value;
@@ -9642,7 +9648,7 @@
                     const hasChildren = children.length > 0;
 
                     // Create safe data attributes
-                    let rendered = template
+                    const rendered = template
                         .replace('<li ', `<li data-nodeid="${node.id}" data-nodename="${nodeName}" data-level="${level}" data-haschildren="${hasChildren}" data-children="${childrenJson}" `);
 
                     return rendered;

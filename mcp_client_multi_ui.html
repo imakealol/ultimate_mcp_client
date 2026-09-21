@@ -4038,7 +4038,7 @@
                 this.gammaTable = new Array(256);
                 for (let i = 0; i < 256; i++) {
                     const v = i / 255;
-                    this.gammaTable[i] = v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+                    this.gammaTable[i] = v <= 0.03928 ? v / 12.92 : ((v + 0.055) / 1.055) ** 2.4;
                 }
                 console.log("ContrastOptimizer initialized.");
             }
@@ -4228,7 +4228,7 @@
         }
 
         // safeDebugStringify (as provided previously)
-        window.safeDebugStringify = function (obj, indent = 2) {
+        window.safeDebugStringify = (obj, indent = 2) => {
             const seen = new WeakSet();
             return JSON.stringify(obj, (key, value) => {
                 if (value && typeof value === 'object' && value.nodeType > 0) {
@@ -4823,7 +4823,7 @@
                         if (statusData && typeof statusData === 'object') {
                             const newAgentStatusState = { ...this.agentStatus }; 
                             for (const key in statusData) {
-                                if (statusData.hasOwnProperty(key)) {
+                                if (Object.hasOwn(statusData, key)) {
                                     newAgentStatusState[key] = statusData[key];
                                 }
                             }
@@ -5093,7 +5093,7 @@
                                     movableColumns: true,
                                     resizableRows: false, 
                                     initialSort: [{ column: "id", dir: "asc" }], 
-                                    rowFormatter:function(row){ /* ... (rowFormatter from previous good version) ... */
+                                    rowFormatter:(row)=> { /* ... (rowFormatter from previous good version) ... */
                                         var data = row.getData();
                                         if(data.status === "in_progress"){
                                             row.getElement().style.backgroundColor = "hsl(var(--in)/0.1)"; 
@@ -7308,7 +7308,7 @@
                         if (event.code !== 1000 && event.code !== 1001) {
                             if (this.wsReconnectAttempts < 5) {
                                 this.wsReconnectAttempts++;
-                                const delay = Math.min(30000, Math.pow(2, this.wsReconnectAttempts) * 1000);
+                                const delay = Math.min(30000, 2 ** this.wsReconnectAttempts * 1000);
                                 this.addNotification(`Chat disconnected. Retrying in ${delay / 1000}s...`, 'warning');
                                 console.log(`WebSocket reconnect attempt ${this.wsReconnectAttempts} in ${delay}ms`);
                                 setTimeout(() => this.connectWebSocket(), delay);
@@ -7445,7 +7445,7 @@
                         }
                         this.scrollToBottom();
                         break;
-                    case 'tool_result': // This is when a tool called by USER's query returns data to LLM
+                    case 'tool_result': { // This is when a tool called by USER's query returns data to LLM
                         const toolResultPayload = message.payload;
                         this.addMessageToConversation('user', [toolResultPayload], { // User role because it's input to LLM
                             content_type: 'tool_result',
@@ -7456,6 +7456,7 @@
                         });
                         this.scrollToBottom();
                         break;
+                    }
                     case 'query_complete': // For user's query
                     case 'stream_end':     // For user's query
                         this.isSendingMessage = false; // This is for user-initiated queries
@@ -7551,7 +7552,7 @@
                         break;
 
                     // == Agent Activity Log (from AML's own actions/thoughts) ==
-                    case 'agent_activity_log':
+                    case 'agent_activity_log': {
                         const activityPayload = message.payload; // Expected: {summary: "...", timestamp: "..."}
                         this.addMessageToConversation(
                             'system', // Or a dedicated 'agent_log' role if you want different styling
@@ -7565,6 +7566,7 @@
                         );
                         this.scrollToBottom();
                         break;
+                    }
 
                     // == General Websocket/Client State Messages (Mostly Unchanged) ==
                     case 'error': // Generic error from backend/MCPClient
@@ -7586,7 +7588,7 @@
                             this.saveToStorage('mcp_token_usage', this.tokenUsage);
                         }
                         break;
-                    case 'command_response':
+                    case 'command_response': {
                         const responseData = message.payload;
                         const notificationType = responseData.success ? 'success' : 'error';
                         this.addNotification(responseData.message, notificationType);
@@ -7622,6 +7624,7 @@
                             }
                         }
                         break;
+                    }
                     case 'state_update': // Full state update, less common for agent activity, more for initial load/major changes
                         console.log("Received full state update:", message.payload);
                         if (message.payload.servers) this.servers = message.payload.servers;
@@ -7916,7 +7919,7 @@
                             unescapedContent = unescapedContent.replace(/[\u0000-\u001F]/g, match => {
                                 return match === '\n' ? '\\n' : match === '\r' ? '\\r' : match === '\t' ? '\\t' : match === '\b' ? '\\b' : match === '\f' ? '\\f' : `\\u${match.charCodeAt(0).toString(16).padStart(4, '0')}`;
                             });
-                            unescapedContent = unescapedContent.replace(/\\([^"'\\\/bfnrtu])/g, '$1');
+                            unescapedContent = unescapedContent.replace(/\\([^"'\\/bfnrtu])/g, '$1');
                             return JSON.parse(unescapedContent);
                         } catch (e) {
                             console.error("JSON parsing failed:", e.message, "\nContent:", unescapedContent.substring(0, 100) + "...");
@@ -7936,7 +7939,7 @@
                         const isExplicitToolResult = message.content_type === 'tool_result';
                         const isSingleBlockToolResult = Array.isArray(message.content) && message.content.length === 1 && message.content[0]?.type === 'tool_result';
                         if (isExplicitToolResult || isSingleBlockToolResult) {
-                            let resultBlock = isSingleBlockToolResult ? message.content[0] : null;
+                            const resultBlock = isSingleBlockToolResult ? message.content[0] : null;
                             let resultData = isSingleBlockToolResult ? resultBlock.content : message.content;
                             if (typeof resultData === 'string' && this.isProbablyJsonString(resultData)) {
                                 try {
@@ -8027,7 +8030,7 @@
                             const toolUseId = block.tool_use_id || "";
                             const relatedToolUseBlock = content.find(b => b.type === 'tool_use' && b.id === toolUseId);
                             const relatedToolName = relatedToolUseBlock?.name;
-                            let rawResultContent = block.content;
+                            const rawResultContent = block.content;
                             let displayContent = "";
                             let language = 'plaintext';
                             let rawContentForCopy = rawResultContent;
@@ -8105,7 +8108,7 @@
                         if (typeof content === 'string') {
                             // 1. Clean TextContent wrapper first
                             const cleanedContent = this._cleanTextContentWrappers(content);
-                            let potentialJsonString = cleanedContent;
+                            const potentialJsonString = cleanedContent;
 
                             // If cleaning occurred, log it
                             if (cleanedContent !== content) {
@@ -8213,7 +8216,7 @@
                     // Extract embedded JSON from strings
                     _extractJsonFromString(str) {
                         if (typeof str !== 'string') return null;
-                        const jsonRegexPatterns = [/\{(?:[^{}]|(?:\{(?:[^{}]|(?:\{[^{}]*\}))*\}))*\}/g, /\[(?:[^\[\]]|(?:\[(?:[^\[\]]|(?:\[[^\[\]]*\]))*\]))*\]/g];
+                        const jsonRegexPatterns = [/\{(?:[^{}]|(?:\{(?:[^{}]|(?:\{[^{}]*\}))*\}))*\}/g, /\[(?:[^[\]]|(?:\[(?:[^[\]]|(?:\[[^[\]]*\]))*\]))*\]/g];
                         for (const pattern of jsonRegexPatterns) {
                             const matches = str.match(pattern);
                             if (!matches) continue;
@@ -8531,9 +8534,12 @@
                     if (value === undefined || value === null) return 'N/A';
                     try {
                         switch (type) {
-                            case 'cost': const cost = parseFloat(value); if (isNaN(cost)) return 'N/A'; if (cost < 0.0001 && cost !== 0) return `${(cost * 1000000).toFixed(2)}µ$`; if (cost < 0.01 && cost !== 0) return `${(cost * 1000).toFixed(2)}m$`; return `$${cost.toFixed(6)}`;
-                            case 'time': const time = parseFloat(value); if (isNaN(time)) return 'N/A'; if (time < 0.1) return `${(time * 1000).toFixed(0)}ms`; if (time < 60) return `${time.toFixed(2)}s`; const mins = Math.floor(time / 60); const secs = Math.round(time % 60); return `${mins}m ${secs}s`;
-                            case 'number': const num = parseInt(value); return isNaN(num) ? 'N/A' : num.toLocaleString();
+                            case 'cost': { const cost = parseFloat(value); if (isNaN(cost)) return 'N/A'; if (cost < 0.0001 && cost !== 0) return `${(cost * 1000000).toFixed(2)}µ$`; if (cost < 0.01 && cost !== 0) return `${(cost * 1000).toFixed(2)}m$`; return `$${cost.toFixed(6)}`;
+                            }
+                            case 'time': { const time = parseFloat(value); if (isNaN(time)) return 'N/A'; if (time < 0.1) return `${(time * 1000).toFixed(0)}ms`; if (time < 60) return `${time.toFixed(2)}s`; const mins = Math.floor(time / 60); const secs = Math.round(time % 60); return `${mins}m ${secs}s`;
+                            }
+                            case 'number': { const num = parseInt(value); return isNaN(num) ? 'N/A' : num.toLocaleString();
+                            }
                             default: return String(value);
                         }
                     } catch (e) { console.error("Error formatting value:", value, type, e); return 'N/A'; }
@@ -8685,7 +8691,7 @@
                             return '<div class="tool-message opacity-70 italic">[Empty Tool Result]</div>';
                         }
                         let contentHTML = '';
-                        let isStringPayload = typeof payload === 'string';
+                        const isStringPayload = typeof payload === 'string';
                         if (isStringPayload) {
                             const markdownInputString = payload.replace(/\\n/g, '\n');
                             const markdownOutputHTML = this.visualRenderer.renderMarkdown(markdownInputString);
@@ -8724,7 +8730,7 @@
                                     }
                                     break;
                                 case 'single_model':
-                                case 'models':
+                                case 'models': {
                                     const modelsToRender = analysisResult.models?.length > 0 ? analysisResult.models : (typeof payload === 'object' && ((payload.text && payload.model) || (payload.content && payload.model)) ? [payload] : []);
                                     modelsToRender.forEach((modelData, index) => {
                                         if (modelData) {
@@ -8735,6 +8741,7 @@
                                         contentHTML += this.visualRenderer.renderStatsDashboard(analysisResult.stats);
                                     }
                                     break;
+                                }
                                 case 'providers_status':
                                     contentHTML = (payload && typeof payload === 'object' && payload.providers) ? this.visualRenderer.renderProvidersStatus(payload.providers) : this.visualRenderer.renderCodeBlock(payload, 'json', 'Provider Status Data');
                                     break;
@@ -8826,7 +8833,7 @@
                     const isError = message.is_error || content?.error || false;
                     const statusClass = isError ? 'text-error' : 'text-success';
                     const statusIcon = isError ? 'fa-exclamation-circle' : 'fa-check-circle';
-                    let resultContent = content?.error?.message || content?.error || content;
+                    const resultContent = content?.error?.message || content?.error || content;
                     try {
                         const highlightedContent = hljs.highlight(resultContent, {
                             language: 'json',
@@ -9337,7 +9344,7 @@
                     const children = node.childrenIds || [];
                     const childrenJson = JSON.stringify(children).replace(/"/g, '"');
                     const hasChildren = children.length > 0;
-                    let rendered = template.replace('<li ', `<li data-nodeid="${node.id}" data-nodename="${nodeName}" data-level="${level}" data-haschildren="${hasChildren}" data-children="${childrenJson}" `);
+                    const rendered = template.replace('<li ', `<li data-nodeid="${node.id}" data-nodename="${nodeName}" data-level="${level}" data-haschildren="${hasChildren}" data-children="${childrenJson}" `);
                     return rendered;
                 },
                 async executeToolDirectly() {
